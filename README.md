@@ -6,6 +6,13 @@ The script installs the required build dependencies, downloads the precompiled C
 
 In a typical environment, this script can complete a fast musrfit installation within about ***five minutes***, depending mainly on your internet speed when downloading ROOT.
 
+## Supported System
+
+- Ubuntu 24.04
+- WSL2 Ubuntu 24.04 is recommended for musrfit users on Windows.
+
+ If another Linux version is detected, the script will ask whether to continue and may work as well.
+
 ## Quick Start
 
 1. Clone this repository.
@@ -31,6 +38,24 @@ In a typical environment, this script can complete a fast musrfit installation w
    ```
 
    This step is required because a `.sh` script runs in a child shell. Environment changes made there cannot directly update the parent shell you are using.
+
+## Verify the Installation
+
+After running `source ~/.bashrc`, check the installed programs:
+
+```bash
+root-config --version
+which musrfit
+which musredit
+which musrview
+```
+
+Start the graphical musrfit editor:
+
+```bash
+musredit
+```
+
 
 ## Author
 
@@ -72,14 +97,8 @@ MUSRFIT_REF=<another_commit_or_tag> ./install_musrfit_ubuntu24.04.sh
 
 The exact musrfit version installed is printed in the installation report as the short commit hash and the latest commit line.
 
-## Supported System
 
-- Ubuntu 24.04
-- WSL2 Ubuntu 24.04 is recommended for musrfit users on Windows.
-
- If another Linux version is detected, the script will ask whether to continue and may work as well.
-
-## What Will Be Installed
+## What Will Be Installed and Default Path
 
 - ROOT from CERN
 - musrfit from the official Bitbucket repository, checked out at the configured `MUSRFIT_REF`
@@ -103,11 +122,11 @@ export PATH=$ROOTSYS/bin:$PATH
 export MUSRFITPATH=$ROOTSYS/bin
 ```
 
-The official musrfit instructions also ask users to add the same environment setup to `~/.bash_profile`. This installer intentionally does not create or edit `~/.bash_profile`.
+The official musrfit instructions also ask users to add the same environment setup to `~/.bash_profile`. This installer intentionally does not create or edit `~/.bash_profile`. The explanation is as follows.
 
-On Ubuntu, `~/.bash_profile` usually does not exist by default. Instead, Ubuntu provides `~/.profile`, which normally contains logic to load `~/.bashrc` automatically for Bash sessions. If this installer forcibly created a new `~/.bash_profile`, Bash would prefer it over `~/.profile`, and the default Ubuntu logic in `~/.profile` would no longer run unless it was copied manually. That can cause conflicts with other software or shell setup.
+On Ubuntu, `~/.bash_profile` usually does not exist by default. Instead, Ubuntu provides `~/.profile`, which normally contains logic to load `~/.bashrc` automatically for Bash sessions. If this installer forcibly created a new `~/.bash_profile`, Bash would prefer it over `~/.profile` and `~/.bashrc`, and the default Ubuntu logic in `~/.profile`  and `~/.bashrc` would no longer run unless it was copied manually. That can cause conflicts with other software or shell setup.
 
-For this reason, the installer only updates `~/.bashrc`. If another package or your own configuration already uses `~/.bash_profile`, you can copy the environment block there manually. The recommended approach is to make `~/.bash_profile` load `~/.bashrc`, for example:
+For this reason, the installer only updates `~/.bashrc`. If another package or your own configuration already uses `~/.bash_profile`, you can copy the environment block there manually. The recommended approach is to make `~/.bash_profile` load `~/.bashrc` by adding codes into  `~/.bash_profile`:
 
 ```bash
 if [ -f ~/.bashrc ]; then
@@ -115,22 +134,6 @@ if [ -f ~/.bashrc ]; then
 fi
 ```
 
-## Verify the Installation
-
-After running `source ~/.bashrc`, check the installed programs:
-
-```bash
-root-config --version
-which musrfit
-which musredit
-which musrview
-```
-
-Start the graphical musrfit editor:
-
-```bash
-musredit
-```
 
 ## Notes
 
