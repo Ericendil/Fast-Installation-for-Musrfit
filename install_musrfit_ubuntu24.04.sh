@@ -10,6 +10,7 @@ trap 'echo "Error at line ${LINENO}: ${BASH_COMMAND}" >&2' ERR
 #   INSTALL_HOME=${HOME}
 #   ROOT_URL=https://root.cern/download/root_v6.40.02.Linux-ubuntu24.04-x86_64-gcc13.3.tar.gz
 #   MUSRFIT_REPO=https://bitbucket.org/muonspin/musrfit.git
+#   MUSRFIT_REF=6ed33d65
 #   BUILD_JOBS=8
 
 INSTALL_HOME="${INSTALL_HOME:-${HOME}}"
@@ -19,6 +20,7 @@ ROOT_ARCHIVE="${ROOT_URL##*/}"
 ROOTSYS="${APPS_DIR}/root"
 MUSRFIT_REPO="${MUSRFIT_REPO:-https://bitbucket.org/muonspin/musrfit.git}"
 MUSRFIT_SRC="${APPS_DIR}/musrfit"
+MUSRFIT_REF="${MUSRFIT_REF:-6ed33d65}"
 BUILD_JOBS="${BUILD_JOBS:-8}"
 ENV_BLOCK_START="# >>> ROOT and musrfit >>>"
 ENV_BLOCK_END="# <<< ROOT and musrfit <<<"
@@ -160,13 +162,21 @@ configure_shell_profiles() {
 }
 
 clone_or_update_musrfit() {
+  log "Using musrfit ref: ${MUSRFIT_REF}"
+
   if [[ -d "${MUSRFIT_SRC}/.git" ]]; then
-    log "Updating existing musrfit source tree."
-    git -C "${MUSRFIT_SRC}" pull --ff-only
+    log "Fetching musrfit refs and tags in existing source tree."
+    git -C "${MUSRFIT_SRC}" fetch --all --tags
+  elif [[ -e "${MUSRFIT_SRC}" ]]; then
+    echo "${MUSRFIT_SRC} exists but is not a git repository." >&2
+    echo "Please move it away or set MUSRFIT_SRC to a different path." >&2
+    exit 1
   else
     log "Cloning musrfit from ${MUSRFIT_REPO}."
     git clone "${MUSRFIT_REPO}" "${MUSRFIT_SRC}"
   fi
+
+  git -C "${MUSRFIT_SRC}" checkout "${MUSRFIT_REF}"
 }
 
 build_musrfit() {
@@ -196,7 +206,8 @@ report_versions() {
   which musrfit || true
   which musredit || true
   which musrview || true
-  git -C "${MUSRFIT_SRC}" rev-parse HEAD || true
+  git -C "${MUSRFIT_SRC}" rev-parse --short HEAD || true
+  git -C "${MUSRFIT_SRC}" log -1 --oneline || true
 }
 
 main() {
