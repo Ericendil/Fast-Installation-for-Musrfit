@@ -2,7 +2,7 @@
 
 This repository provides a Bash installer for setting up ROOT and musrfit on Ubuntu 24.04.
 
-The script installs the required build dependencies, downloads the precompiled CERN ROOT package, clones the musrfit source code, checks out a fixed musrfit ref for reproducible Ubuntu 24.04 LTS builds, builds musrfit, installs it into the ROOT directory, and adds the required environment variables to the user's shell profile.
+The script installs the required build dependencies, downloads the precompiled CERN ROOT package, clones the musrfit source code, checks out a fixed musrfit ref for reproducible Ubuntu 24.04 LTS builds, builds musrfit, installs it into the ROOT directory, and adds the required environment variables to the user's `~/.bashrc`.
 
 In a typical environment, this script can complete a fast musrfit installation within about ***five minutes***, depending mainly on your internet speed when downloading ROOT.
 
@@ -95,12 +95,24 @@ Default installation paths:
 
 ## Installed Environment Variables
 
-The script adds the following block to `~/.bashrc` and `~/.bash_profile`:
+The script adds the following block to `~/.bashrc` only:
 
 ```bash
 export ROOTSYS=~/apps/root
 export PATH=$ROOTSYS/bin:$PATH
 export MUSRFITPATH=$ROOTSYS/bin
+```
+
+The official musrfit instructions also ask users to add the same environment setup to `~/.bash_profile`. This installer intentionally does not create or edit `~/.bash_profile`.
+
+On Ubuntu, `~/.bash_profile` usually does not exist by default. Instead, Ubuntu provides `~/.profile`, which normally contains logic to load `~/.bashrc` automatically for Bash sessions. If this installer forcibly created a new `~/.bash_profile`, Bash would prefer it over `~/.profile`, and the default Ubuntu logic in `~/.profile` would no longer run unless it was copied manually. That can cause conflicts with other software or shell setup.
+
+For this reason, the installer only updates `~/.bashrc`. If another package or your own configuration already uses `~/.bash_profile`, you can copy the environment block there manually. The recommended approach is to make `~/.bash_profile` load `~/.bashrc`, for example:
+
+```bash
+if [ -f ~/.bashrc ]; then
+    . ~/.bashrc
+fi
 ```
 
 ## Verify the Installation

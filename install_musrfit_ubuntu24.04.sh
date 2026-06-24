@@ -158,7 +158,6 @@ EOF
 configure_shell_profiles() {
   log "Adding ROOT and musrfit environment variables to shell profiles."
   upsert_env_block "${INSTALL_HOME}/.bashrc"
-  upsert_env_block "${INSTALL_HOME}/.bash_profile"
 }
 
 clone_or_update_musrfit() {
