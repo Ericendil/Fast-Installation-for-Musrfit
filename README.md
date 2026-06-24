@@ -55,6 +55,12 @@ ROOT_URL=<another_root_tarball_url> ./install_musrfit_ubuntu24.04.sh
 The script builds musrfit from the official Bitbucket repository, but it does not automatically install the latest upstream source by default. To keep Ubuntu 24.04 LTS installation reproducible with the system Qt6 packages, the default musrfit source ref is fixed:
 
 ```bash
+https://bitbucket.org/muonspin/musrfit.git
+```
+
+The default ref corresponds to musrfit version 1.11.1, dated 2026.06.07:
+
+```bash
 MUSRFIT_REF=6ed33d65
 ```
 
