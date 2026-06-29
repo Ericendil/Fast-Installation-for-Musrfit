@@ -4,24 +4,27 @@ trap 'echo "Error at line ${LINENO}: ${BASH_COMMAND}" >&2' ERR
 
 # Install ROOT and musrfit on Ubuntu 24.04.
 # Usage:
-#   bash install_musrfit_ubuntu24.04.sh
+#   bash installer_v1.9.5.sh
 #
 # Optional environment variables:
 #   INSTALL_HOME=${HOME}
-#   ROOT_URL=https://root.cern/download/root_v6.40.02.Linux-ubuntu24.04-x86_64-gcc13.3.tar.gz
+#   ROOT_URL=https://root.cern/download/root_v6.32.02.Linux-ubuntu24.04-x86_64-gcc13.2.tar.gz
 #   MUSRFIT_REPO=https://bitbucket.org/muonspin/musrfit.git
-#   MUSRFIT_REF=6ed33d65
-#   BUILD_JOBS=8
+#   MUSRFIT_SRC=${INSTALL_HOME}/apps/musrfit
+#   MUSRFIT_REF=ebefcf7af9fed9524be78afcf39d81d97577b48b
+#   BUILD_JOBS=$(nproc)
 
 INSTALL_HOME="${INSTALL_HOME:-${HOME}}"
 APPS_DIR="${INSTALL_HOME}/apps"
-ROOT_URL="${ROOT_URL:-https://root.cern/download/root_v6.40.02.Linux-ubuntu24.04-x86_64-gcc13.3.tar.gz}"
+ROOT_URL="${ROOT_URL:-https://root.cern/download/root_v6.32.02.Linux-ubuntu24.04-x86_64-gcc13.2.tar.gz}"
 ROOT_ARCHIVE="${ROOT_URL##*/}"
+TARGET_ROOT_VERSION="${ROOT_ARCHIVE#root_v}"
+TARGET_ROOT_VERSION="${TARGET_ROOT_VERSION%%.Linux-*}"
 ROOTSYS="${APPS_DIR}/root"
 MUSRFIT_REPO="${MUSRFIT_REPO:-https://bitbucket.org/muonspin/musrfit.git}"
-MUSRFIT_SRC="${APPS_DIR}/musrfit"
-MUSRFIT_REF="${MUSRFIT_REF:-6ed33d65}"
-BUILD_JOBS="${BUILD_JOBS:-8}"
+MUSRFIT_SRC="${MUSRFIT_SRC:-${APPS_DIR}/musrfit}"
+MUSRFIT_REF="${MUSRFIT_REF:-ebefcf7af9fed9524be78afcf39d81d97577b48b}"
+BUILD_JOBS="${BUILD_JOBS:-$(command -v nproc >/dev/null 2>&1 && nproc || printf '8')}"
 ENV_BLOCK_START="# >>> ROOT and musrfit >>>"
 ENV_BLOCK_END="# <<< ROOT and musrfit <<<"
 SUDO=()
@@ -75,20 +78,15 @@ install_packages() {
   "${SUDO[@]}" add-apt-repository -y universe
   "${SUDO[@]}" apt-get update
 
-  local hdf4_package="libhdf4-dev"
-  if ! apt-cache show "${hdf4_package}" >/dev/null 2>&1; then
-    hdf4_package="libhdf4-alt-dev"
-  fi
-
   local packages=(
-    build-essential g++ git cmake wget ca-certificates \
-    libboost-all-dev libboost-dev libboost-filesystem-dev libboost-system-dev \
-    libgsl-dev libfftw3-dev libxml2-dev \
-    "${hdf4_package}" libhdf5-dev libnexus-dev nexus-tools \
-    qt6-base-dev qt6-base-dev-tools qt6-tools-dev qt6-tools-dev-tools qt6-svg-dev \
-    libx11-dev libxft-dev libxpm-dev libxext-dev \
-    zlib1g-dev liblzma-dev liblz4-dev libzstd-dev libssl-dev \
-    libfreetype-dev libjpeg-dev libpng-dev libgif-dev \
+    build-essential g++ git cmake wget ca-certificates
+    libboost-all-dev
+    libgsl-dev libfftw3-dev libxml2-dev
+    libhdf4-dev libhdf5-dev libnexus-dev nexus-tools
+    qt6-base-dev qt6-base-dev-tools qt6-tools-dev qt6-tools-dev-tools qt6-svg-dev
+    libx11-dev libxft-dev libxpm-dev libxext-dev
+    zlib1g-dev liblzma-dev liblz4-dev libzstd-dev libssl-dev
+    libfreetype-dev libjpeg-dev libpng-dev libgif-dev
     libvdt-dev libtbb12 libtbb-dev
   )
   "${SUDO[@]}" apt-get install -y "${packages[@]}"
@@ -96,9 +94,12 @@ install_packages() {
 
 prepare_directories() {
   log "Preparing ${APPS_DIR}."
-  "${SUDO[@]}" mkdir -p "${APPS_DIR}"
+  if mkdir -p "${APPS_DIR}" 2>/dev/null && [[ -w "${APPS_DIR}" ]]; then
+    return
+  fi
 
-  local owner="${SUDO_USER:-${USER}}"
+  local owner="${USER:-$(id -un)}"
+  "${SUDO[@]}" mkdir -p "${APPS_DIR}"
   if id "${owner}" >/dev/null 2>&1; then
     "${SUDO[@]}" chown -R "${owner}:${owner}" "${APPS_DIR}"
   fi
@@ -106,8 +107,17 @@ prepare_directories() {
 
 install_root() {
   if [[ -x "${ROOTSYS}/bin/root-config" ]]; then
-    log "ROOT already exists at ${ROOTSYS}; skipping download."
-    return
+    local installed_root_version
+    installed_root_version="$("${ROOTSYS}/bin/root-config" --version)"
+    if [[ "${installed_root_version}" == "${TARGET_ROOT_VERSION}" ]]; then
+      log "ROOT ${installed_root_version} already exists at ${ROOTSYS}; skipping download."
+      return
+    fi
+
+    echo "ROOT already exists at ${ROOTSYS}, but its version is ${installed_root_version}." >&2
+    echo "This installer expects ROOT ${TARGET_ROOT_VERSION}." >&2
+    echo "Move the existing ROOT directory away or set INSTALL_HOME to a different path." >&2
+    exit 1
   fi
 
   log "Checking ROOT download URL."
@@ -180,6 +190,7 @@ clone_or_update_musrfit() {
 
 build_musrfit() {
   log "Building musrfit with ${BUILD_JOBS} parallel jobs."
+  rm -rf "${MUSRFIT_SRC}/build"
   mkdir -p "${MUSRFIT_SRC}/build"
   cd "${MUSRFIT_SRC}/build"
 
@@ -187,8 +198,11 @@ build_musrfit() {
   source "${ROOTSYS}/bin/thisroot.sh"
   cmake .. \
     -DCMAKE_INSTALL_PREFIX="${ROOTSYS}" \
+    -DCMAKE_BUILD_TYPE=Release \
     -Dnexus=1 \
-    -DHAVE_HDF4=1
+    -DHAVE_HDF4=1 \
+    -DNEXUS_INCLUDE_DIR=/usr/include/nexus \
+    -DNEXUS_LIBRARY=/usr/lib/x86_64-linux-gnu/libNeXus.so
   cmake --build . --clean-first -- -j"${BUILD_JOBS}"
   cmake --install .
   "${SUDO[@]}" /sbin/ldconfig
